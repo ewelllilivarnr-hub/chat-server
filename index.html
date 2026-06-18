@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>聊天室</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: sans-serif; background:#1a1a2e; color:#eee; height:100vh; display:flex; flex-direction:column; max-width:600px; margin:0 auto; }
+  .header { background:#16213e; padding:16px; text-align:center; font-size:18px; }
+  .header span { color:#0f3460; font-size:14px; }
+  .messages { flex:1; overflow-y:auto; padding:12px; }
+  .msg { margin-bottom:12px; padding:8px 12px; border-radius:8px; max-width:85%; word-break:break-all; }
+  .msg.chat { background:#0f3460; }
+  .msg.chat .from { font-size:12px; color:#e94560; margin-bottom:4px; }
+  .msg.chat .time { font-size:10px; color:#999; float:right; }
+  .msg.system { background:transparent; color:#999; font-size:13px; text-align:center; max-width:100%; }
+  .msg.self { background:#e94560; margin-left:auto; }
+  .msg.self .from { color:#fff; }
+  .input-area { display:flex; padding:12px; background:#16213e; gap:8px; }
+  .input-area input { flex:1; padding:10px; border:none; border-radius:6px; background:#1a1a2e; color:#eee; font-size:16px; }
+  .input-area button { padding:10px 20px; border:none; border-radius:6px; background:#e94560; color:#fff; font-size:16px; cursor:pointer; }
+  .online { background:#0f3460; padding:6px 16px; font-size:13px; text-align:center; }
+</style>
+</head>
+<body>
+  <div class="header">💬 聊天室</div>
+  <div class="online" id="online">在线：— 人</div>
+  <div class="messages" id="messages"></div>
+  <div class="input-area">
+    <input id="input" placeholder="输入消息..." autofocus />
+    <button id="sendBtn">发送</button>
+  </div>
+
+<script>
+// ============================================
+// 前端：连接我们的服务器
+// ============================================
+
+// 自动检测：如果是本地开发连 localhost，否则连同一个地址
+const host = location.host;  // 服务器部署后，自动用同一个地址
+const ws = new WebSocket(`ws://${host}`);
+
+let selfName = '';
+
+ws.onmessage = (e) => {
+  const msg = JSON.parse(e.data);
+  const div = document.createElement('div');
+
+  if (msg.type === 'system') {
+    div.className = 'msg system';
+    div.textContent = msg.text;
+    document.getElementById('online').textContent = `在线：${msg.online} 人`;
+    if (msg.selfName) selfName = msg.selfName;
+  } else if (msg.type === 'chat') {
+    div.className = msg.from === selfName ? 'msg chat self' : 'msg chat';
+    div.innerHTML = `<div class="from">${msg.from}</div>${msg.text}<span class="time">${msg.time}</span>`;
+  }
+
+  document.getElementById('messages').appendChild(div);
+  document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+};
+
+function sendMsg() {
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text) return;
+  ws.send(JSON.stringify({ text }));
+  input.value = '';
+}
+
+document.getElementById('sendBtn').onclick = sendMsg;
+document.getElementById('input').onkeydown = (e) => { if (e.key === 'Enter') sendMsg(); };
+</script>
+</body>
+</html>
